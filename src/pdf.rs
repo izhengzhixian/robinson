@@ -1,4 +1,5 @@
-use std::io::{Seek, SeekFrom, Write, self};
+use std::io::{Seek, SeekFrom, Write, BufWriter, self};
+use std::fs::File;
 use crate::layout::{LayoutBox, Rect};
 use crate::painting::{DisplayCommand, build_display_list};
 
@@ -9,14 +10,21 @@ fn px_to_pt(value: f32) -> f32 {
     value * 0.75
 }
 
+pub fn render_file(layout_root: &LayoutBox, bounds: Rect,
+                   filename: &str) -> io::Result<()> {
+    render(layout_root, bounds,
+           &mut BufWriter::new(File::create(&filename)?))
+}
 
-pub fn render<W: Write + Seek>(layout_root: &LayoutBox, bounds: Rect, file: &mut W)
+pub fn render<W: Write + Seek>(layout_root: &LayoutBox,
+                               bounds: Rect, file: &mut W)
     -> io::Result<()>
 {
     let display_list = build_display_list(layout_root);
     let mut pdf = Pdf::new(file)?;
     // We map CSS pt to Poscript points (which is the default length unit in PDF).
-    pdf.render_page(px_to_pt(bounds.width), px_to_pt(bounds.height), |output| {
+    pdf.render_page(px_to_pt(bounds.width),
+                    px_to_pt(bounds.height), |output| {
         for item in display_list {
             render_item(&item, output)?;
         }
@@ -52,7 +60,7 @@ impl<'a, W: Write + Seek> Pdf<'a, W> {
         // FIXME: Find out the lowest version that contains the features we’re using.
         output.write_all(b"%PDF-1.7\n%\xB5\xED\xAE\xFB\n")?;
         Ok(Pdf {
-            output: output,
+            output,
             // Object ID 0 is special in PDF.
             // We reserve IDs 1 and 2 for the catalog and page tree.
             object_offsets: vec![-1, -1, -1],

@@ -2,7 +2,7 @@ extern crate getopts;
 extern crate image;
 
 use std::default::Default;
-use std::io::{Read, BufWriter};
+use std::io::Read;
 use std::fs::File;
 
 pub mod css;
@@ -20,8 +20,15 @@ fn main() {
     opts.optopt("c", "css", "CSS stylesheet", "FILENAME");
     opts.optopt("o", "output", "Output file", "FILENAME");
     opts.optopt("f", "format", "Output file format", "png | pdf");
+    opts.optflag("", "help", "print help");
 
     let matches = opts.parse(std::env::args().skip(1)).unwrap();
+
+    if matches.opt_present("help") {
+        println!("{}", opts.usage(""));
+        return;
+    }
+
     let str_arg = |flag: &str, default: &str| -> String {
         matches.opt_str(flag).unwrap_or(default.to_string())
     };
@@ -50,7 +57,6 @@ fn main() {
 
     // Create the output file:
     let filename = str_arg("o", if png { "output.png" } else { "output.pdf" });
-    let mut file = BufWriter::new(File::create(&filename).unwrap());
 
     // Write to the file:
     let ok = if png {
@@ -58,11 +64,11 @@ fn main() {
         let (w, h) = (canvas.width as u32, canvas.height as u32);
         let img = image::ImageBuffer::from_fn(w, h, move |x, y| {
             let color = canvas.pixels[(y * w + x) as usize];
-            image::Pixel::from_channels(color.r, color.g, color.b, color.a)
+            image::Rgba([color.r, color.g, color.b, color.a])
         });
-        image::ImageRgba8(img).save(&mut file, image::PNG).is_ok()
+        img.save(&filename).is_ok()
     } else {
-        pdf::render(&layout_root, viewport.content, &mut file).is_ok()
+        pdf::render_file(&layout_root, viewport.content, &filename).is_ok()
     };
     if ok {
         println!("Saved output as {}", filename)

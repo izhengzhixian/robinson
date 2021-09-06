@@ -51,7 +51,7 @@ pub enum BoxType<'a> {
 impl<'a> LayoutBox<'a> {
     fn new(box_type: BoxType) -> LayoutBox {
         LayoutBox {
-            box_type: box_type,
+            box_type,
             dimensions: Default::default(),
             children: Vec::new(),
         }
@@ -66,7 +66,8 @@ impl<'a> LayoutBox<'a> {
 }
 
 /// Transform a style tree into a layout tree.
-pub fn layout_tree<'a>(node: &'a StyledNode<'a>, mut containing_block: Dimensions) -> LayoutBox<'a> {
+pub fn layout_tree<'a>(node: &'a StyledNode<'a>,
+                       mut containing_block: Dimensions) -> LayoutBox<'a> {
     // The layout algorithm expects the container height to start at 0.
     // TODO: Save the initial containing block height, for calculating percent heights.
     containing_block.content.height = 0.0;
